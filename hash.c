@@ -27,10 +27,23 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
     hash->destruir_dato = destruir_dato;
     hash->tamanio = TAMANIO;
     hash->cantidad = 0;
-    hash->tabla = lista_crear();
+    hash->tabla = malloc(sizeof(lista_t*));
+    *hash->tabla = lista_crear();
     if (hash->tabla == NULL){
         free(hash);
         return NULL;
     }
     return hash;
+}
+
+size_t hash_cantidad(const hash_t *hash){
+    return hash->cantidad;
+}
+
+void hash_destruir(hash_t *hash){
+    for (int i = 0; i < hash_cantidad(hash); i++) {
+        lista_destruir(hash->tabla[i],hash->destruir_dato);
+    }
+    free(hash->tabla);
+    free(hash);
 }
