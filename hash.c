@@ -5,10 +5,9 @@
 #include "string.h"
 
 #define TAMANIO 97;
-//#define BUCKETS 3;
 const int BUCKETS = 3;
 typedef struct {
-    void* clave;
+    char* clave;
     void* valor;
 }clave_valor_t;
 struct hash{
@@ -24,9 +23,8 @@ struct hash_iter{
     lista_iter_t* iter_lista_actual;
 };
 
-typedef struct hash hash_t;
-
 typedef int*(*puntero_hash_t)(void*);
+unsigned long hash_1(const char *str);
 
 hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
     hash_t* hash = malloc(sizeof(hash_t));
@@ -56,13 +54,9 @@ void hash_destruir(hash_t *hash){
     free(hash);
 }
 
-/* Determina si clave pertenece o no al hash.
- * Pre: La estructura hash fue inicializada
- */
 bool hash_pertenece(const hash_t *hash, const char *clave) {
-    int posicion = func_hash();
+    int posicion = hash_1(clave);
     clave_valor_t* actual;
-    hash->tabla[posicion];
     lista_iter_t* iter = lista_iter_crear(hash->tabla[posicion]);
     while (!lista_iter_al_final(iter)){
         actual = lista_iter_ver_actual(iter);
@@ -73,66 +67,94 @@ bool hash_pertenece(const hash_t *hash, const char *clave) {
 	return false;
 }
 
-/* Guarda un elemento en el hash, si la clave ya se encuentra en la
- * estructura, la reemplaza. De no poder guardarlo devuelve false.
- * Pre: La estructura hash fue inicializada
- * Post: Se almacenó el par (clave, dato)
- */
+void *hash_obtener(const hash_t *hash, const char *clave){
+    int posicion = hash_1(clave);
+    clave_valor_t* actual;
+    lista_iter_t* iter = lista_iter_crear(hash->tabla[posicion]);
+    while (!lista_iter_al_final(iter)){
+        actual = lista_iter_ver_actual(iter);
+        if (strcmp(clave, actual->clave) == 0){
+            return actual->valor;
+        }
+    }
+    return NULL;
+}
+
 bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
 
-	int valor = hash_01(clave);
+	int valor = hash_1(clave);
 	if (hash->tabla[valor] == NULL) {
         hash->tabla[valor] = lista_crear();
 	}
+    lista_t* bucket = hash->tabla[valor];
 	clave_valor_t* actual;
 	clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
+	clave_valor->clave = malloc(sizeof(char)*strlen(clave));
 	strcpy(clave_valor->clave, clave );
 	clave_valor->valor = dato;
-	lista_iter_t* iter = lista_iter_crear(hash->tabla[valor]);
-    for (int i=0; i < BUCKETS; i++){
-	    actual = lista_iter_ver_actual(iter);
-	    if(strcmp(actual->clave, clave) == 0){
-	        lista_iter_borrar(iter);
-	        lista_iter_insertar(iter, clave_valor);
-            return true;
-	    }
-	    lista_iter_avanzar(iter);
-	}
-	if(lista_iter_al_final(iter)){
-
-    } else{
+	lista_iter_t* iter = lista_iter_crear(bucket);
+	if (lista_largo(bucket) < BUCKETS){
+        for (int i = 0; i < BUCKETS && !lista_iter_al_final(iter); ++i) {
+            actual = lista_iter_ver_actual(iter);
+            if (strcmp(actual->clave, clave) == 0){
+                lista_iter_borrar(iter);
+                //lista_iter_insertar(iter, clave_valor);
+                //lista_iter_destruir(iter);
+                //return true;
+                break;
+            }
+            lista_iter_avanzar(iter);
+        }
         lista_iter_insertar(iter, clave_valor);
         lista_iter_destruir(iter);
-        hash->cantidad++;
         return true;
 	}
+    lista_iter_destruir(iter);
+    return true;
 }
 
 void *hash_borrar(hash_t *hash, const char *clave){
-    int valor = hash_01(clave);
-    if (hash->tabla[valor] == NULL) {
+    int valor = hash_1(clave);
+    lista_t* bucket = hash->tabla[valor];
+    if (bucket == NULL) {
         return NULL;
     }
     clave_valor_t* actual;
-    lista_iter_t* iter = lista_iter_crear(hash->tabla[valor]);
+    lista_iter_t* iter = lista_iter_crear(bucket);
     while (!lista_iter_al_final(iter)){
-
+        actual = lista_iter_ver_actual(iter);
+        if(strcmp(clave, actual->clave) == 0){
+            lista_iter_borrar(iter);
+            return actual->valor;
+        }
+        lista_iter_avanzar(iter);
     }
+    return NULL;
 }
 
-int hash_01(void* clave) {
-	//Poner código FNV Hashing
-	return 4
+unsigned long hash_1(const char *str)
+{
+    unsigned long hash = 5381;
+    int c = *str;
+
+    while (c){
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+        c = *str++;
+    }
+
+
+    return hash%TAMANIO;
 }
 
 int* hash_02(void* clave) {
 	//Jenkins Hashing
+	return 0;
 }
 
 
 
 // Crea iterador
-hash_iter_t *hash_iter_crear(const hash_t *hash_) {
+/*hash_iter_t *hash_iter_crear(const hash_t *hash_) {
 	hash_iter_t *iterador_hash = malloc(sizeof(hash_iter_t));
 	if (!iterador_hash) {
 		return NULL;
@@ -140,10 +162,10 @@ hash_iter_t *hash_iter_crear(const hash_t *hash_) {
 	iterador_hash->hash = hash_;
 	iterador_hash->actual = lista_ver_primero(hash->tabla[0]);
 	return true;
-}
+}*/
 
 // Avanza iterador
-bool hash_iter_avanzar(hash_iter_t *iter) {
+/*bool hash_iter_avanzar(hash_iter_t *iter) {
 
 for (lista_principal, i++){
 	lista_clave_valor = lista_principal[i]
@@ -154,20 +176,20 @@ for (lista_principal, i++){
 }
 
 
-}
+}*/
 
 // Devuelve clave actual, esa clave no se puede modificar ni liberar.
-const char *hash_iter_ver_actual(const hash_iter_t *iter) {
+/*const char *hash_iter_ver_actual(const hash_iter_t *iter) {
 	//consulta porque en iter->actual tengo una listal, y muchos elementos.
 	lista_iter_t *iterador = lista_iter_crear( iter->actual );
 	return(lista_ver_primero(iter->actual)->clave);
-}
+}*/
 
 // Comprueba si terminó la iteración
-bool hash_iter_al_final(const hash_iter_t *iter) {
+/*bool hash_iter_al_final(const hash_iter_t *iter) {
 	while ( hash_iter_avanzar(iter) );
 	return true;
-}
+}*/
 
 // Destruye iterador
 void hash_iter_destruir(hash_iter_t* iter) {
