@@ -2,8 +2,11 @@
 #include <stddef.h>
 #include "stdlib.h"
 #include "lista.h"
+#include "string.h"
 
 #define TAMANIO 97;
+//#define BUCKETS 3;
+const int BUCKETS = 3;
 typedef struct {
     void* clave;
     void* valor;
@@ -14,12 +17,12 @@ struct hash{
     size_t cantidad;
     hash_destruir_dato_t destruir_dato;
 };
-struct {
+struct hash_iter{
     hash_t* hash;
     size_t indice_lista_actual;
     clave_valor_t* actual;
     lista_iter_t* iter_lista_actual;
-}hash_iter;
+};
 
 typedef struct hash hash_t;
 
@@ -34,7 +37,6 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
     hash->tamanio = TAMANIO;
     hash->cantidad = 0;
     hash->tabla = malloc(sizeof(lista_t*));
-    *hash->tabla = lista_crear();
     if (hash->tabla == NULL){
         free(hash);
         return NULL;
@@ -58,16 +60,17 @@ void hash_destruir(hash_t *hash){
  * Pre: La estructura hash fue inicializada
  */
 bool hash_pertenece(const hash_t *hash, const char *clave) {
-
-	//puntero_hash_t* lista_funciones_hash, iterador;
-
-	//iterador = lista_funciones_hash[0];
-
-	//while (hash->tabla[iterador(clave)].clave != clave ) {
-	//	iterador++;
-	//}
-	return true;
-
+    int posicion = func_hash();
+    clave_valor_t* actual;
+    hash->tabla[posicion];
+    lista_iter_t* iter = lista_iter_crear(hash->tabla[posicion]);
+    while (!lista_iter_al_final(iter)){
+        actual = lista_iter_ver_actual(iter);
+        if (strcmp(clave, actual->clave) == 0){
+            return true;
+        }
+    }
+	return false;
 }
 
 /* Guarda un elemento en el hash, si la clave ya se encuentra en la
@@ -77,22 +80,49 @@ bool hash_pertenece(const hash_t *hash, const char *clave) {
  */
 bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
 
-	int * valor = hash_01(clave);
-	lista_t* listita = hash->tabla[valor];
-	if (!listita) {
-		listita = ista_crear();
+	int valor = hash_01(clave);
+	if (hash->tabla[valor] == NULL) {
+        hash->tabla[valor] = lista_crear();
 	}
-
+	clave_valor_t* actual;
 	clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
 	strcpy(clave_valor->clave, clave );
 	clave_valor->valor = dato;
-	lista_insertar_ultimo( hash->tabla[valor], clave_valor);
-	return true;
+	lista_iter_t* iter = lista_iter_crear(hash->tabla[valor]);
+    for (int i=0; i < BUCKETS; i++){
+	    actual = lista_iter_ver_actual(iter);
+	    if(strcmp(actual->clave, clave) == 0){
+	        lista_iter_borrar(iter);
+	        lista_iter_insertar(iter, clave_valor);
+            return true;
+	    }
+	    lista_iter_avanzar(iter);
+	}
+	if(lista_iter_al_final(iter)){
+
+    } else{
+        lista_iter_insertar(iter, clave_valor);
+        lista_iter_destruir(iter);
+        hash->cantidad++;
+        return true;
+	}
 }
 
+void *hash_borrar(hash_t *hash, const char *clave){
+    int valor = hash_01(clave);
+    if (hash->tabla[valor] == NULL) {
+        return NULL;
+    }
+    clave_valor_t* actual;
+    lista_iter_t* iter = lista_iter_crear(hash->tabla[valor]);
+    while (!lista_iter_al_final(iter)){
 
-int* hash_01(void* clave) {
+    }
+}
+
+int hash_01(void* clave) {
 	//Poner código FNV Hashing
+	return 4
 }
 
 int* hash_02(void* clave) {
