@@ -16,8 +16,9 @@ struct hash{
 };
 struct {
     hash_t* hash;
-    lista_t* actual;
-    lista_iter_t* actual;
+    size_t indice_lista_actual;
+    clave_valor_t* actual;
+    lista_iter_t* iter_lista_actual;
 }hash_iter;
 
 typedef struct hash hash_t;
