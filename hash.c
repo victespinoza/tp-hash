@@ -10,6 +10,7 @@
 #define TAMANIO 97;
 #define CAPACIDAD_BUCKETS_TABLA_HASH 4
 #define CAPACIDAD_INICIAL_TABLA_HASH 50
+
 typedef struct {
     void* clave;
     void* valor;
@@ -40,7 +41,6 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
     hash->tamanio = TAMANIO;
     hash->cantidad = 0;
     hash->tabla = malloc(sizeof(lista_t*));
-    *hash->tabla = lista_crear();
     if (hash->tabla == NULL){
         free(hash);
         return NULL;
@@ -82,17 +82,6 @@ bool hash_pertenece(const hash_t *hash, const char *clave) {
  * Post: Se almacenó el par (clave, dato)
  */
 bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
-	/*int * valor = hash_01(clave);
-	lista_t* listita = hash->tabla[valor];
-	if (!listita) {
-		listita = ista_crear();
-	}
-
-	clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
-	strcpy(clave_valor->clave, clave );
-	clave_valor->valor = dato;
-	lista_insertar_ultimo( hash->tabla[valor], clave_valor);*/
-
 	puntero_funcion_hash_t* array_funciones_hash = {hash_01, hash_02, hash_03, NULL};
 	int flag;
 	size_t resultado_hash, i = 0;
@@ -126,6 +115,19 @@ int hash_01(void* clave, size_t largo_tabla_hash) {
 	    }
 	    return hash % largo_tabla_hash;
 }
+
+void *hash_borrar(hash_t *hash, const char *clave){
+    int valor = hash_01(clave);
+    if (hash->tabla[valor] == NULL) {
+        return NULL;
+    }
+    clave_valor_t* actual;
+    lista_iter_t* iter = lista_iter_crear(hash->tabla[valor]);
+    while (!lista_iter_al_final(iter)){
+
+    }
+}
+
 /*	char *teststring = "This is a test";
 	uint32_t hash_of_string = FNV32(teststring);
 */
