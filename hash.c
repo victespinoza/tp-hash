@@ -8,9 +8,13 @@
 #define FNV_OFFSET_64 14695981039346656037
 
 #define TAMANIO 97;
+#define CAPACIDAD_BUCKETS_TABLA_HASH 4
+#define CAPACIDAD_INICIAL_TABLA_HASH 50
 typedef struct {
     void* clave;
     void* valor;
+    size_t numero_hash;
+    bool reubicando;
 }clave_valor_t;
 struct hash {
     lista_t** tabla;
@@ -25,7 +29,7 @@ struct hash_iter {
     lista_iter_t* iter_posicion_actual;
 };
 
-typedef int*(*puntero_hash_t)(void*);
+typedef int*(*puntero_funcion_hash_t)(void*);
 
 hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
     hash_t* hash = malloc(sizeof(hash_t));
@@ -60,16 +64,16 @@ void hash_destruir(hash_t *hash){
  * Pre: La estructura hash fue inicializada
  */
 bool hash_pertenece(const hash_t *hash, const char *clave) {
-
-	//puntero_hash_t* lista_funciones_hash, iterador;
-
-	//iterador = lista_funciones_hash[0];
-
-	//while (hash->tabla[iterador(clave)].clave != clave ) {
-	//	iterador++;
-	//}
+	hash_iter_t *iter = hash_iter_crear(hash);
+	if (!iter) {
+		return false;
+	}
+	while(strcmp(hash_iter_ver_actual(iter),clave)) {
+		if (! hash_iter_avanzar(iter) ) {
+			return false;
+		}
+	}
 	return true;
-
 }
 
 /* Guarda un elemento en el hash, si la clave ya se encuentra en la
@@ -78,8 +82,7 @@ bool hash_pertenece(const hash_t *hash, const char *clave) {
  * Post: Se almacenó el par (clave, dato)
  */
 bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
-
-	int * valor = hash_01(clave);
+	/*int * valor = hash_01(clave);
 	lista_t* listita = hash->tabla[valor];
 	if (!listita) {
 		listita = ista_crear();
@@ -88,8 +91,29 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
 	clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
 	strcpy(clave_valor->clave, clave );
 	clave_valor->valor = dato;
-	lista_insertar_ultimo( hash->tabla[valor], clave_valor);
-	return true;
+	lista_insertar_ultimo( hash->tabla[valor], clave_valor);*/
+
+	puntero_funcion_hash_t* array_funciones_hash = {hash_01, hash_02, hash_03, NULL};
+	int flag;
+	size_t resultado_hash, i = 0;
+	lista_iter_t *iterador = NULL;
+	clave_valor_t *par_clave_valor = malloc(sizeof(clave_valor_t));
+	if (!par_clave_valor) {
+		return false;
+	}
+	par_clave_valor->clave = clave;
+	par_clave_valor->valor = dato;
+	par_clave_valor->numero_hash = 01;
+	par_clave_valor->reubicando = false;
+	resultado_hash = array_funciones_hash[i](clave, hash->cantidad);
+	if (lista_largo(hash->tabla[resultado_hash]) == CAPACIDAD_BUCKETS_TABLA_HASH) {
+		clave_valor_t *par_desplazado = lista_borrar_primero(hash->tabla[resultado_hash]);
+		par_desplazado->reubicando = true;
+		lista_insertar_ultimo(hash->tabla[resultado_hash], par_clave_valor);
+		return reubicar(hash, par_desplazado);
+	} else {
+		return lista_insertar_ultimo(hash->tabla[resultado_hash], par_clave_valor);
+	}
 }
 
 int hash_01(void* clave, size_t largo_tabla_hash) {
