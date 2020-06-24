@@ -57,8 +57,17 @@ size_t hash_cantidad(const hash_t *hash){
 }
 
 void hash_destruir(hash_t *hash){
+    lista_t* bucket;
     for (int i = 0; i < hash->tamanio; i++) {
-        lista_destruir(hash->tabla[i], hash->destruir_dato);
+        bucket = hash->tabla[i];
+        lista_iter_t* iter = lista_iter_crear(bucket);
+        while (!lista_iter_al_final(iter)){
+            clave_valor_t* clave_valor = lista_iter_borrar(iter);
+            free(clave_valor->clave);
+            free(clave_valor);
+        }
+        lista_iter_destruir(iter);
+        lista_destruir(bucket, hash->destruir_dato);
     }
     free(hash->tabla);
     free(hash);
@@ -104,7 +113,7 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
     if(clave_valor == NULL){
         return false;
     }
-    clave_valor->clave = malloc(sizeof(char)*strlen(clave));
+    clave_valor->clave = malloc(sizeof(char)*(strlen(clave)+1));
     if(clave_valor->clave == NULL){
         free(clave_valor);
         return false;
@@ -118,7 +127,7 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
             actual = lista_iter_ver_actual(iter);
             if (strcmp(actual->clave, clave) == 0){
                 free(actual->clave);
-                lista_iter_borrar(iter);
+                free(lista_iter_borrar(iter));
                 hash->cantidad--;
                 break;
             }
@@ -149,12 +158,15 @@ void *hash_borrar(hash_t *hash, const char *clave){
     while (!lista_iter_al_final(iter)){
         actual = lista_iter_ver_actual(iter);
         if(strcmp(clave, actual->clave) == 0){
+            void* valor = actual->valor;
             free(actual->clave);
-            lista_iter_borrar(iter);
-            return actual->valor;
+            free(lista_iter_borrar(iter));
+            lista_iter_destruir(iter);
+            return valor;
         }
         lista_iter_avanzar(iter);
     }
+    lista_iter_destruir(iter);
     return NULL;
 }
 

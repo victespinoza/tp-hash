@@ -30,10 +30,10 @@ void pruebas_volumen_catedra(size_t);
 extern void destruir_clave_valor(void *tda);
 
 int main(){
-    hash_t* hash = hash_crear(destruir_clave_valor);
+    hash_t* hash = hash_crear(NULL);
     printf("Guardando hash pepito\n");
     hash_guardar(hash, "pepito","valor");
-  /*  printf("Guardando hash pepito2\n");
+    printf("Guardando hash pepito2\n");
     hash_guardar(hash, "pepito2","valor2");
     printf("Guardando hash pepito3\n");
     hash_guardar(hash, "pepito3","valor3");
@@ -52,7 +52,7 @@ int main(){
     }
     if (hash_pertenece(hash,"pepito2")){
         printf("pepito2 pertenece al set\n");
-    }*/
+    }
     printf("destruyo hash\n");
     hash_destruir(hash);
 }

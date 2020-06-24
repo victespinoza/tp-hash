@@ -30,10 +30,7 @@ lista_t *lista_crear(void){
     return lista;
 }
 
-bool gi(const lista_t *lista){
-	if(!lista) {
-		return true;
-	}
+bool lista_esta_vacia(const lista_t *lista){
     return lista->largo == 0;
 }
 
