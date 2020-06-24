@@ -70,13 +70,16 @@ bool hash_pertenece(const hash_t *hash, const char *clave) {
 void *hash_obtener(const hash_t *hash, const char *clave){
     int posicion = hash_1(clave);
     clave_valor_t* actual;
-    lista_iter_t* iter = lista_iter_crear(hash->tabla[posicion]);
+    lista_t* bucket = hash->tabla[posicion];
+    lista_iter_t* iter = lista_iter_crear(bucket);
     while (!lista_iter_al_final(iter)){
         actual = lista_iter_ver_actual(iter);
         if (strcmp(clave, actual->clave) == 0){
+            lista_iter_destruir(iter);
             return actual->valor;
         }
     }
+    lista_iter_destruir(iter);
     return NULL;
 }
 
@@ -98,18 +101,15 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
             actual = lista_iter_ver_actual(iter);
             if (strcmp(actual->clave, clave) == 0){
                 lista_iter_borrar(iter);
-                //lista_iter_insertar(iter, clave_valor);
-                //lista_iter_destruir(iter);
-                //return true;
+                hash->cantidad--;
                 break;
             }
             lista_iter_avanzar(iter);
         }
         lista_iter_insertar(iter, clave_valor);
-        lista_iter_destruir(iter);
-        return true;
 	}
     lista_iter_destruir(iter);
+	hash->cantidad++;
     return true;
 }
 
