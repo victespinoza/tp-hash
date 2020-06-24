@@ -27,22 +27,32 @@ void pruebas_volumen_catedra(size_t);
 
     return failure_count() > 0;
 }*/
+extern void destruir_clave_valor(void *tda);
 
 int main(){
-    hash_t* hash = hash_crear(NULL);
+    hash_t* hash = hash_crear(destruir_clave_valor);
+    printf("Guardando hash pepito\n");
     hash_guardar(hash, "pepito","valor");
+  /*  printf("Guardando hash pepito2\n");
     hash_guardar(hash, "pepito2","valor2");
+    printf("Guardando hash pepito3\n");
     hash_guardar(hash, "pepito3","valor3");
+    printf("Guardando hash pepito con valor actualizado\n");
     hash_guardar(hash, "pepito","valor actualizado");
+    printf("Borrando hash pepito2\n");
     hash_borrar(hash, "pepito2");
     char* valor = hash_obtener(hash, "pepito");
     char* valor2 = hash_obtener(hash, "pepito2");
     char* valor3 = hash_obtener(hash, "pepito3");
-    printf("%s \n",valor);
-    printf("%s \n",valor2);
-    printf("%s \n",valor3);
-    if (hash_pertenece(hash,"pepito2")){
-        printf("pertenece");
+    printf("dato del hash pepito es: %s \n",valor);
+    printf("dato del hash pepito2 es: %s \n",valor2);
+    printf("dato del hash pepito3 es: %s \n",valor3);
+    if (hash_pertenece(hash,"pepito")){
+        printf("pepito pertenece al set\n");
     }
+    if (hash_pertenece(hash,"pepito2")){
+        printf("pepito2 pertenece al set\n");
+    }*/
+    printf("destruyo hash\n");
     hash_destruir(hash);
 }
