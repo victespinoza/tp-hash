@@ -96,11 +96,19 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
     lista_t* bucket = hash->tabla[valor];
 	clave_valor_t* actual;
 	clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
+	if(clave_valor == NULL){
+	    return false;
+	}
 	clave_valor->clave = malloc(sizeof(char)*strlen(clave));
+	if(clave_valor->clave = NULL){
+	    free(clave_valor);
+	    return false;
+	}
 	strcpy(clave_valor->clave, clave );
 	clave_valor->valor = dato;
-	lista_iter_t* iter = lista_iter_crear(bucket);
+	lista_iter_t* iter;
 	if (lista_largo(bucket) < BUCKETS){
+        iter = lista_iter_crear(bucket);
         for (int i = 0; i < BUCKETS && !lista_iter_al_final(iter); i++) {
             actual = lista_iter_ver_actual(iter);
             if (strcmp(actual->clave, clave) == 0){
@@ -112,10 +120,17 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato) {
             lista_iter_avanzar(iter);
         }
         lista_iter_insertar(iter, clave_valor);
+        lista_iter_destruir(iter);
+        hash->cantidad++;
+        return true;
 	}
-    lista_iter_destruir(iter);
-	hash->cantidad++;
-    return true;
+	else{
+        iter = lista_iter_crear(bucket);
+        clave_valor_t* primer_elemento = lista_iter_borrar(iter);
+        lista_iter_insertar(iter, clave_valor);
+        lista_iter_destruir(iter);
+        return hash_guardar(hash,primer_elemento->clave, primer_elemento->valor);
+	}
 }
 
 void *hash_borrar(hash_t *hash, const char *clave){
