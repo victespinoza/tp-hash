@@ -8,24 +8,8 @@
 /* ******************************************************************
  *                        PROGRAMA PRINCIPAL
  * *****************************************************************/
-typedef struct lista lista_t;
-struct hash {
-    lista_t** tabla;
-    size_t tamanio;
-    size_t cantidad;
-    hash_destruir_dato_t destruir_dato;
-};
-typedef struct nodo{
-    void** dato;
-    struct nodo* siguiente;
-} nodo_t;
-struct lista{
-    nodo_t* primero;
-    nodo_t* ultimo;
-    size_t largo;
-};
-void pruebas_hash_catedra(void);
-void pruebas_volumen_catedra(size_t);
+//void pruebas_hash_catedra(void);
+//void pruebas_volumen_catedra(size_t);
 
 /*int main(int argc, char *argv[])
 {
@@ -44,10 +28,10 @@ void pruebas_volumen_catedra(size_t);
 
     return failure_count() > 0;
 }*/
-extern void destruir_clave_valor(void *tda);
+//extern void destruir_clave_valor(void *tda);
 
 int main(int argc, char* argv[]){
-    /*hash_t* hash = hash_crear(destruir_clave_valor);
+    hash_t* hash = hash_crear(NULL);
     printf("Guardando hash pepito\n");
     hash_guardar(hash, "pepito","valor");
     printf("Guardando hash pepito2\n");
@@ -72,61 +56,46 @@ int main(int argc, char* argv[]){
     }
     printf("destruyo hash\n");
     hash_destruir(hash);
-*/
-    printf("Ahora pruebo guardando muchos nombres\n");
+
+    /*printf("Ahora pruebo guardando muchos nombres\n");
 	size_t capacidad = 0;
-    hash_t* nuevo_hash = hash_crear(destruir_clave_valor);
-	char *linea_stdin = NULL;
-	char *puntero_stdin = NULL;
-	printf("argv[1] es %s\n", argv[1]);
-    char const* fileName = argv[1]; /* should check that argc > 1 */
-    FILE* file;
-    if (argc==2) printf("hola\n");
-    file = fopen(fileName, "r+"); /* should check the result */
-    if (!file) {
-    	printf("error reading the file %s!\n", argv[1]);
+    hash_t* nuevo_hash = hash_crear(NULL);
+    char const* fileName = "nombres.txt";
+    FILE* archivo = fopen(fileName, "r");
+    if(archivo==NULL){
+        return -1;
     }
-    size_t i = 0;
-	while( getline( &linea_stdin, &capacidad, file) != -1 ) {
-	    i++;
-	    if (i == 97) {
-	    	printf ("97\n");
-	    } else if (i == 197) {
-	    	printf ("197\n");
-	    } else if (i == 397) {
-	    	printf ("397\n");
-	    }
-		puntero_stdin = strchr(linea_stdin, '\n');
-		if (!puntero_stdin) {
-	    	printf ("ERROR linea 101\n");
-		} else {
-			*puntero_stdin = '\0';
-		}
-		puntero_stdin = strchr(linea_stdin, ',');
-		if (!puntero_stdin) {
-	    	printf ("ERROR linea 107\n");
-		} else {
-			*puntero_stdin = '\0';
-		}
-		puntero_stdin++;
-	    hash_guardar(nuevo_hash, linea_stdin, puntero_stdin);
-	}
-	fclose(file);
+    char* linea = NULL;
+    char* clave;
+    int contador = 0;
+    while(getline(&linea, &capacidad, archivo) > 0){
+        clave = strtok(linea, "\n");
+        printf("%s",clave);
+        hash_guardar(nuevo_hash, clave, &contador);
+        contador++;
+    }
+    free(linea);
+	fclose(archivo);
+    FILE* archivo2 = fopen(fileName, "r");
+    char* linea2 = NULL;
+    char* clave2;
+    int contador2 = 0;
+    int* valor;
+    while(getline(&linea, &capacidad, archivo) > 0){
+        clave2 = strtok(linea2, "\n");
+        valor = hash_obtener(nuevo_hash, clave2);
+        if(*valor == contador2){
+            printf("es igual valor");
+        }else{
+            printf("no es igual, el valor guardado es: %d en la clave: %s",*valor,clave);
+        }
+    }
+    fclose(archivo2);
 	printf("cantidad de datos guardados en hash: %zu\n", hash_cantidad(nuevo_hash));
-	printf("tamanio del hash: %zu\n", nuevo_hash->tamanio);
+	//printf("tamanio del hash: %zu\n", nuevo_hash->tamanio);
 
-	printf("ingrese consultas de nombres de una sola palabra, para salir presione enter dos veces:\n");
-	while ( getline( &linea_stdin,&capacidad,stdin)) {
-		if (!hash_pertenece(nuevo_hash, linea_stdin)) {
-			printf("el nombre %s no existe en la base de datos\n",linea_stdin);
-		} else {
-			printf("el nombre %s, tiene por fecha de inscripción: %s\n",linea_stdin, (char*)hash_obtener(nuevo_hash, linea_stdin));
-		}
-		free(linea_stdin);
-		printf("\n");
-		printf("ingrese consultas de nombres de una sola palabra, para salir presione enter dos veces:\n");
-	}
-	hash_destruir(nuevo_hash);
-
+	hash_destruir(nuevo_hash);*/
 	return 0;
 }
+
+
