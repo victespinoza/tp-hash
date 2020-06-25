@@ -6,7 +6,7 @@
  *                        PROGRAMA PRINCIPAL
  * *****************************************************************/
 
-//void pruebas_hash_catedra(void);
+void pruebas_hash_catedra(void);
 //void pruebas_volumen_catedra(size_t);
 
 /*int main(int argc, char *argv[])
@@ -42,4 +42,5 @@ int main(){
         printf("pertenece");
     }
     hash_destruir(hash);
+    pruebas_hash_catedra();
 }
