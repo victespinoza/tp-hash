@@ -8,7 +8,7 @@
 #define FNV_PRIME_64 1099511628211U
 #define FNV_OFFSET_64 14695981039346656037U
 
-const size_t TAMANIO = 97;//5003 997
+const size_t TAMANIO = 997;//5003 997
 #define CAPACIDAD_BUCKETS 4
 
 typedef struct {
@@ -40,7 +40,7 @@ size_t siguiente_primo(size_t numero);
 
 hash_t* _reasignar_posiciones_hash(hash_t* hash);
 hash_t* _hash_crear(hash_destruir_dato_t destruir_dato, size_t capacidad);
-bool _hash_guardar(hash_t *hash, clave_valor_t* claveValor, size_t (*funciones_hash[3])(const char*, size_t));
+bool _hash_guardar(hash_t *hash, clave_valor_t* claveValor);
 
 hash_t* hash_crear(hash_destruir_dato_t destruir_dato){
     return _hash_crear(destruir_dato, TAMANIO);
@@ -147,10 +147,10 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
     }
     strcpy(clave_valor->clave, clave );
     clave_valor->valor = dato;
-    return _hash_guardar(hash, clave_valor, funciones_hash);
+    return _hash_guardar(hash, clave_valor);
 }
 
-bool _hash_guardar(hash_t *hash, clave_valor_t* clave_valor, funcion_hash_t* funciones_hash) {
+bool _hash_guardar(hash_t *hash, clave_valor_t* clave_valor) {
     if(clave_valor->cantidad_hash_aplicado >= 3){
         hash = _reasignar_posiciones_hash(hash);
         clave_valor->cantidad_hash_aplicado = 0;
@@ -187,7 +187,7 @@ bool _hash_guardar(hash_t *hash, clave_valor_t* clave_valor, funcion_hash_t* fun
         clave_valor_t* primer_elemento = lista_iter_borrar(iter);
         lista_iter_insertar(iter, clave_valor);
         lista_iter_destruir(iter);
-        return _hash_guardar(hash,primer_elemento, funciones_hash);
+        return _hash_guardar(hash,primer_elemento);
     }
 }
 
