@@ -4,18 +4,17 @@
 #include "lista.h"
 #include <string.h>
 #include <stdint.h>
-#include "stdio.h"
+#include "math.h"
 #define FNV_PRIME_64 1099511628211U
 #define FNV_OFFSET_64 14695981039346656037U
 
-const size_t TAMANIO = 5003;//5003 997
+const size_t TAMANIO = 97;//5003 997
 #define CAPACIDAD_BUCKETS 4
 
 typedef struct {
     char* clave;
     void* valor;
     size_t cantidad_hash_aplicado;
-    bool reubicando;
 } clave_valor_t;
 struct hash {
     lista_t** tabla;
@@ -36,6 +35,8 @@ size_t hash_1(const char *, size_t);
 size_t hash_02(const char*, size_t);
 size_t hash_03(const char*, size_t);
 funcion_hash_t funciones_hash[3] = {hash_1, hash_02, hash_03};
+bool isPrime(size_t prime);
+size_t siguiente_primo(size_t numero);
 
 hash_t* _reasignar_posiciones_hash(hash_t* hash);
 hash_t* _hash_crear(hash_destruir_dato_t destruir_dato, size_t capacidad);
@@ -157,9 +158,6 @@ bool _hash_guardar(hash_t *hash, clave_valor_t* clave_valor, funcion_hash_t* fun
     funcion_hash_t funcion_hash = funciones_hash[clave_valor->cantidad_hash_aplicado];
     clave_valor->cantidad_hash_aplicado++;
     char* clave = clave_valor->clave;
-    if(clave == NULL){
-        printf("ES NULL");
-    }
     long posicion = funcion_hash(clave, hash->tamanio);
     lista_t* bucket = hash->tabla[posicion];
     clave_valor_t* actual;
@@ -221,26 +219,26 @@ void *hash_borrar(hash_t *hash, const char *clave){
 }
 
 hash_t* _reasignar_posiciones_hash(hash_t* hash){
-    hash->tabla = realloc(hash->tabla, hash->tamanio+TAMANIO);
+    hash_t* nuevo_hash = _hash_crear(hash->destruir_dato, siguiente_primo(hash->tamanio+TAMANIO));
     lista_t* clave_valor_lista = lista_crear();
     for (int i = 0; i < hash->tamanio; i++) {
         lista_iter_t* iter_bucket = lista_iter_crear(hash->tabla[i]);
         while (!lista_iter_al_final(iter_bucket)){
             lista_insertar_primero(clave_valor_lista, lista_iter_borrar(iter_bucket));
-            lista_iter_avanzar(iter_bucket);
         }
         lista_iter_destruir(iter_bucket);
+        lista_destruir(hash->tabla[i], NULL);
     }
+    free(hash->tabla);
     while (!lista_esta_vacia(clave_valor_lista)){
         clave_valor_t* clave_valor = lista_borrar_primero(clave_valor_lista);
-        hash_guardar(hash, clave_valor->clave, clave_valor->valor);
-        if(hash->destruir_dato != NULL){
-            hash->destruir_dato(clave_valor->valor);
-        }
+        hash_guardar(nuevo_hash, clave_valor->clave, clave_valor->valor);
         free(clave_valor->clave);
         free(clave_valor);
     }
+    *hash = *nuevo_hash;
     lista_destruir(clave_valor_lista, NULL);
+    free(nuevo_hash);
     return hash;
 }
 
@@ -420,3 +418,32 @@ void hash_iter_destruir(hash_iter_t* iter) {
     free(iter);
 }
 
+size_t siguiente_primo(size_t numero){
+    if(numero%2 == 0 && numero != 2){
+        numero+=1;
+    }
+
+    /* while its not a prime number, check the next odd number */
+    while(!isPrime(numero)){
+        numero+=2;
+    }
+    return numero;
+}
+
+bool isPrime(size_t prime){
+    int i;
+    if(prime == 2){
+        return true;
+    }
+
+    if(prime%2 == 0 || prime <= 1){
+        return false;
+    } else {
+        for(i=3; i<=sqrt((double)prime); i+=2){
+            if(prime%i == 0){
+                return false;
+            }
+        }
+    }
+    return true;
+}
