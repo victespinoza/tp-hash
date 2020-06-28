@@ -8,7 +8,7 @@
 #define FNV_PRIME_64 1099511628211U
 #define FNV_OFFSET_64 14695981039346656037U
 
-const size_t TAMANIO = 5003;
+const size_t TAMANIO = 5003;//5003 997
 #define CAPACIDAD_BUCKETS 4
 
 typedef struct {
@@ -75,11 +75,15 @@ void hash_destruir(hash_t *hash){
         lista_iter_t* iter = lista_iter_crear(bucket);
         while (!lista_iter_al_final(iter)){
             clave_valor_t* clave_valor = lista_iter_borrar(iter);
+            if(hash->destruir_dato != NULL){
+                hash->destruir_dato(clave_valor->valor);
+            }
             free(clave_valor->clave);
             free(clave_valor);
+
         }
         lista_iter_destruir(iter);
-        lista_destruir(bucket, hash->destruir_dato);
+        lista_destruir(bucket, NULL);
     }
     free(hash->tabla);
     free(hash);
@@ -165,6 +169,9 @@ bool _hash_guardar(hash_t *hash, clave_valor_t* clave_valor, funcion_hash_t* fun
         for (int i = 0; i < CAPACIDAD_BUCKETS && !lista_iter_al_final(iter); i++) {
             actual = lista_iter_ver_actual(iter);
             if (strcmp(actual->clave, clave) == 0){
+                if(hash->destruir_dato != NULL){
+                    hash->destruir_dato(actual->valor);
+                }
                 free(actual->clave);
                 free(lista_iter_borrar(iter));
                 hash->cantidad--;
@@ -192,13 +199,15 @@ void *hash_borrar(hash_t *hash, const char *clave){
     for (int i = 0; i < 3 && valor == NULL; i++) {
         posicion = funciones_hash[i](clave, hash->tamanio);
         lista_t* bucket = hash->tabla[posicion];
-
         clave_valor_t* actual;
         lista_iter_t* iter = lista_iter_crear(bucket);
         while (!lista_iter_al_final(iter)){
             actual = lista_iter_ver_actual(iter);
             if(strcmp(clave, actual->clave) == 0){
                 valor = actual->valor;
+                if(hash->destruir_dato != NULL){
+                    hash->destruir_dato(actual->valor);
+                }
                 free(actual->clave);
                 free(lista_iter_borrar(iter));
                 hash->cantidad--;
@@ -225,6 +234,9 @@ hash_t* _reasignar_posiciones_hash(hash_t* hash){
     while (!lista_esta_vacia(clave_valor_lista)){
         clave_valor_t* clave_valor = lista_borrar_primero(clave_valor_lista);
         hash_guardar(hash, clave_valor->clave, clave_valor->valor);
+        if(hash->destruir_dato != NULL){
+            hash->destruir_dato(clave_valor->valor);
+        }
         free(clave_valor->clave);
         free(clave_valor);
     }

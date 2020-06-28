@@ -26,7 +26,7 @@ void pruebas_hash_catedra(void);
 }*/
 
 int main(){
-    hash_t* hash = hash_crear(NULL);
+    /*hash_t* hash = hash_crear(NULL);
     hash_guardar(hash, "pepito","valor");
     hash_guardar(hash, "pepito2","valor2");
     hash_guardar(hash, "pepito3","valor3");
@@ -41,6 +41,6 @@ int main(){
     if (hash_pertenece(hash,"pepito2")){
         printf("pertenece");
     }
-    hash_destruir(hash);
+    hash_destruir(hash);*/
     pruebas_hash_catedra();
 }
