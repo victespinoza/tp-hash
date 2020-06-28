@@ -8,7 +8,7 @@
 #define FNV_PRIME_64 1099511628211U
 #define FNV_OFFSET_64 14695981039346656037U
 
-const size_t TAMANIO = 997;//5003 997
+const size_t TAMANIO = 97;
 #define CAPACIDAD_BUCKETS 4
 
 typedef struct {
@@ -81,7 +81,6 @@ void hash_destruir(hash_t *hash){
             }
             free(clave_valor->clave);
             free(clave_valor);
-
         }
         lista_iter_destruir(iter);
         lista_destruir(bucket, NULL);
@@ -219,7 +218,7 @@ void *hash_borrar(hash_t *hash, const char *clave){
 }
 
 hash_t* _reasignar_posiciones_hash(hash_t* hash){
-    hash_t* nuevo_hash = _hash_crear(hash->destruir_dato, siguiente_primo(hash->tamanio+TAMANIO));
+    hash_t* nuevo_hash = _hash_crear(hash->destruir_dato, siguiente_primo(hash->tamanio*2));
     lista_t* clave_valor_lista = lista_crear();
     for (int i = 0; i < hash->tamanio; i++) {
         lista_iter_t* iter_bucket = lista_iter_crear(hash->tabla[i]);
