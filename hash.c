@@ -31,17 +31,17 @@ struct hash_iter {
 };
 
 typedef size_t(*funcion_hash_t)(const char*, size_t);
-size_t hash_1(const char *, size_t);
+size_t hash_01(const char *, size_t);
 size_t hash_02(const char*, size_t);
 size_t hash_03(const char*, size_t);
-funcion_hash_t funciones_hash[3] = {hash_1, hash_02, hash_03};
+funcion_hash_t funciones_hash[3] = {hash_01, hash_02, hash_03};
 bool isPrime(size_t prime);
 size_t siguiente_primo(size_t numero);
-
+bool _destruir_bucket(lista_iter_t* iter, hash_destruir_dato_t destruir_dato, void *extra);
 hash_t* _reasignar_posiciones_hash(hash_t* hash);
 hash_t* _hash_crear(hash_destruir_dato_t destruir_dato, size_t capacidad);
 bool _hash_guardar(hash_t *hash, clave_valor_t* claveValor);
-
+void _recorrer_tabla(hash_t* hash, bool visitar(lista_iter_t* bucket, hash_destruir_dato_t destruir_dato, void *extra), void *extra);
 hash_t* hash_crear(hash_destruir_dato_t destruir_dato){
     return _hash_crear(destruir_dato, TAMANIO);
 }
@@ -70,21 +70,7 @@ size_t hash_cantidad(const hash_t *hash){
 }
 
 void hash_destruir(hash_t *hash){
-    lista_t* bucket;
-    for (int i = 0; i < hash->tamanio; i++) {
-        bucket = hash->tabla[i];
-        lista_iter_t* iter = lista_iter_crear(bucket);
-        while (!lista_iter_al_final(iter)){
-            clave_valor_t* clave_valor = lista_iter_borrar(iter);
-            if(hash->destruir_dato != NULL){
-                hash->destruir_dato(clave_valor->valor);
-            }
-            free(clave_valor->clave);
-            free(clave_valor);
-        }
-        lista_iter_destruir(iter);
-        lista_destruir(bucket, NULL);
-    }
+    _recorrer_tabla(hash,_destruir_bucket, NULL);
     free(hash->tabla);
     free(hash);
 }
@@ -241,7 +227,28 @@ hash_t* _reasignar_posiciones_hash(hash_t* hash){
     return hash;
 }
 
-size_t hash_1(const char *str, size_t tamanio) {	//Borrar este comentario: pongo size_t porque el largo de la tabla hash no va a superar el límite, y estamos haciendo módulo a la longitud de la tabla...
+void _recorrer_tabla(hash_t* hash, bool visitar(lista_iter_t* bucket, hash_destruir_dato_t destruir_dato, void *extra), void *extra){
+    for (int i = 0; i < hash->tamanio; i++) {
+        lista_iter_t* iter_bucket = lista_iter_crear(hash->tabla[i]);
+        visitar(iter_bucket, hash->destruir_dato, extra);
+        lista_iter_destruir(iter_bucket);
+        lista_destruir(hash->tabla[i], NULL);
+    }
+}
+
+bool _destruir_bucket(lista_iter_t* iter, hash_destruir_dato_t destruir_dato, void *extra){
+    while (!lista_iter_al_final(iter)){
+        clave_valor_t* clave_valor = lista_iter_borrar(iter);
+        if(destruir_dato != NULL){
+            destruir_dato(clave_valor->valor);
+        }
+        free(clave_valor->clave);
+        free(clave_valor);
+    }
+    return true;
+}
+
+size_t hash_01(const char *str, size_t tamanio) {	//Borrar este comentario: pongo size_t porque el largo de la tabla hash no va a superar el límite, y estamos haciendo módulo a la longitud de la tabla...
     unsigned long hash = 5381;
     int c = *str;
     while (c) {
@@ -249,17 +256,6 @@ size_t hash_1(const char *str, size_t tamanio) {	//Borrar este comentario: pongo
         c = *str++;
     }
     return hash % tamanio;
-}
-
-int hash_01(void* clave, size_t largo_tabla_hash) {
-    //código FNV Hashing. Ref: http://ctips.pbworks.com/w/page/7277591/FNV%20Hash
-    size_t n = strlen((char*) clave);
-    uint_fast64_t hash = FNV_OFFSET_64;
-    for(size_t i = 0; i < n; i++) {
-        hash = hash ^ (((unsigned char*)clave)[i]); 		// xor next byte into the bottom of the hash
-        hash = hash * FNV_PRIME_64; 	// Multiply by prime number found to work well
-    }
-    return (int)(hash%largo_tabla_hash);
 }
 
 size_t hash_02(const char *clave, size_t largo_tabla_hash) {
@@ -421,8 +417,6 @@ size_t siguiente_primo(size_t numero){
     if(numero%2 == 0 && numero != 2){
         numero+=1;
     }
-
-    /* while its not a prime number, check the next odd number */
     while(!isPrime(numero)){
         numero+=2;
     }
@@ -434,7 +428,6 @@ bool isPrime(size_t prime){
     if(prime == 2){
         return true;
     }
-
     if(prime%2 == 0 || prime <= 1){
         return false;
     } else {
