@@ -16,6 +16,7 @@ typedef struct {
     void* valor;
     size_t cantidad_hash_aplicado;
 } clave_valor_t;
+typedef size_t(*funcion_hash_t)(const char*, size_t);
 struct hash {
     lista_t** tabla;
     size_t tamanio;
@@ -30,18 +31,21 @@ struct hash_iter {
     lista_iter_t* iter_posicion_actual;
 };
 
-typedef size_t(*funcion_hash_t)(const char*, size_t);
 size_t hash_01(const char *, size_t);
 size_t hash_02(const char*, size_t);
 size_t hash_03(const char*, size_t);
+
 funcion_hash_t funciones_hash[3] = {hash_01, hash_02, hash_03};
-bool isPrime(size_t prime);
+
+bool es_primo(size_t prime);
 size_t siguiente_primo(size_t numero);
-bool _destruir_bucket(lista_iter_t* iter, hash_destruir_dato_t destruir_dato, void *extra);
+bool _destruir_bucket(lista_iter_t* iter_bucket, void** datos, void *extra);
+bool _guardar_en_lista(lista_iter_t* iter_bucket, void** datos, void *extra);
 hash_t* _reasignar_posiciones_hash(hash_t* hash);
 hash_t* _hash_crear(hash_destruir_dato_t destruir_dato, size_t capacidad);
 bool _hash_guardar(hash_t *hash, clave_valor_t* claveValor);
-void _recorrer_tabla(hash_t* hash, bool visitar(lista_iter_t* bucket, hash_destruir_dato_t destruir_dato, void *extra), void *extra);
+void _recorrer_buckets(hash_t* hash, bool visitar(lista_iter_t* iter_bucket, void** datos, void *extra),void** datos, void *extra);
+
 hash_t* hash_crear(hash_destruir_dato_t destruir_dato){
     return _hash_crear(destruir_dato, TAMANIO);
 }
@@ -70,7 +74,10 @@ size_t hash_cantidad(const hash_t *hash){
 }
 
 void hash_destruir(hash_t *hash){
-    _recorrer_tabla(hash,_destruir_bucket, NULL);
+    void** datos = malloc(sizeof(void*));
+    datos[0] = hash->destruir_dato;
+    _recorrer_buckets(hash, _destruir_bucket, datos, NULL);
+    free(datos);
     free(hash->tabla);
     free(hash);
 }
@@ -206,14 +213,10 @@ void *hash_borrar(hash_t *hash, const char *clave){
 hash_t* _reasignar_posiciones_hash(hash_t* hash){
     hash_t* nuevo_hash = _hash_crear(hash->destruir_dato, siguiente_primo(hash->tamanio*2));
     lista_t* clave_valor_lista = lista_crear();
-    for (int i = 0; i < hash->tamanio; i++) {
-        lista_iter_t* iter_bucket = lista_iter_crear(hash->tabla[i]);
-        while (!lista_iter_al_final(iter_bucket)){
-            lista_insertar_primero(clave_valor_lista, lista_iter_borrar(iter_bucket));
-        }
-        lista_iter_destruir(iter_bucket);
-        lista_destruir(hash->tabla[i], NULL);
-    }
+    void** datos = malloc(sizeof(void*));
+    datos[0] = clave_valor_lista;
+    _recorrer_buckets(hash,_guardar_en_lista,datos,NULL);
+    free(datos);
     free(hash->tabla);
     while (!lista_esta_vacia(clave_valor_lista)){
         clave_valor_t* clave_valor = lista_borrar_primero(clave_valor_lista);
@@ -227,18 +230,28 @@ hash_t* _reasignar_posiciones_hash(hash_t* hash){
     return hash;
 }
 
-void _recorrer_tabla(hash_t* hash, bool visitar(lista_iter_t* bucket, hash_destruir_dato_t destruir_dato, void *extra), void *extra){
+void _recorrer_buckets(hash_t* hash, bool visitar(lista_iter_t* bucket, void** datos, void *extra)
+        , void** datos, void *extra){
     for (int i = 0; i < hash->tamanio; i++) {
         lista_iter_t* iter_bucket = lista_iter_crear(hash->tabla[i]);
-        visitar(iter_bucket, hash->destruir_dato, extra);
+        visitar(iter_bucket, datos, extra);
         lista_iter_destruir(iter_bucket);
         lista_destruir(hash->tabla[i], NULL);
     }
 }
 
-bool _destruir_bucket(lista_iter_t* iter, hash_destruir_dato_t destruir_dato, void *extra){
-    while (!lista_iter_al_final(iter)){
-        clave_valor_t* clave_valor = lista_iter_borrar(iter);
+bool _guardar_en_lista(lista_iter_t* iter_bucket, void** datos, void *extra){
+    lista_t* clave_valor_lista = datos[0];
+    while (!lista_iter_al_final(iter_bucket)){
+        lista_insertar_primero(clave_valor_lista, lista_iter_borrar(iter_bucket));
+    }
+    return true;
+}
+
+bool _destruir_bucket(lista_iter_t* iter_bucket, void** datos, void *extra){
+    hash_destruir_dato_t destruir_dato = datos[0];
+    while (!lista_iter_al_final(iter_bucket)){
+        clave_valor_t* clave_valor = lista_iter_borrar(iter_bucket);
         if(destruir_dato != NULL){
             destruir_dato(clave_valor->valor);
         }
@@ -246,110 +259,6 @@ bool _destruir_bucket(lista_iter_t* iter, hash_destruir_dato_t destruir_dato, vo
         free(clave_valor);
     }
     return true;
-}
-
-size_t hash_01(const char *str, size_t tamanio) {	//Borrar este comentario: pongo size_t porque el largo de la tabla hash no va a superar el límite, y estamos haciendo módulo a la longitud de la tabla...
-    unsigned long hash = 5381;
-    int c = *str;
-    while (c) {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-        c = *str++;
-    }
-    return hash % tamanio;
-}
-
-size_t hash_02(const char *clave, size_t largo_tabla_hash) {
-    //Jenkins Hashing
-    //Ref: https://en.wikipedia.org/wiki/Jenkins_hash_function
-    size_t i = 0, n = strlen((char*)clave);
-    uint32_t hash = 0;
-    while (i != n) {
-        hash += ((unsigned char*)clave)[i++];
-        hash += hash << 10;
-        hash ^= hash >> 6;
-    }
-    hash += hash << 3;
-    hash ^= hash >> 11;
-    hash += hash << 15;
-    return (size_t)(hash%largo_tabla_hash);
-}
-/*
-int hash_murmur(void* clave, size_t largo_tabla_hash) {
-	// Murmur Hashing
-	// para tener en cuenta: https://stackoverflow.com/questions/7666509/hash-function-for-string?rq=1
-	uint_fast64_t h = 525201411107845655ull;
-	  for (;*clave;++clave) {
-	    h ^= *clave;
-	    h *= 0x5bd1e9955bd1e995;
-	    h ^= h >> 47;
-	  }
-	  return h%largo_tabla_hash;
-}
-*/
-size_t hash_03(const char* clave, size_t largo_tabla_hash) {
-    // murmur hash, ref: http://bitsquid.blogspot.com/2011/08/code-snippet-murmur-hash-inverse-pre.html
-    const uint_fast64_t m = 0xc6a4a7935bd1e995ULL;
-    const int r = 47;
-
-    uint_fast64_t h = FNV_PRIME_64 ^ (largo_tabla_hash * m);
-
-    const uint_fast64_t * data = (const uint_fast64_t *)clave;
-    const uint_fast64_t * end = data + (largo_tabla_hash/8);
-
-    while(data != end)
-    {
-#ifdef PLATFORM_BIG_ENDIAN
-        uint_fast64_t k = *data++;
-			char *p = (char *)&k;
-			char c;
-			c = p[0]; p[0] = p[7]; p[7] = c;
-			c = p[1]; p[1] = p[6]; p[6] = c;
-			c = p[2]; p[2] = p[5]; p[5] = c;
-			c = p[3]; p[3] = p[4]; p[4] = c;
-#else
-        uint_fast64_t k = *data++;
-#endif
-
-        k *= m;
-        k ^= k >> r;
-        k *= m;
-
-        h ^= k;
-        h *= m;
-    }
-
-    const unsigned char * data2 = (const unsigned char*)data;
-
-    switch(largo_tabla_hash & 7) {
-        case 7:
-            h ^= (uint_fast64_t)data2[6] << 48;
-            break;
-        case 6:
-            h ^= (uint_fast64_t)data2[5] << 40;
-            break;
-        case 5:
-            h ^= (uint_fast64_t)data2[4] << 32;
-            break;
-        case 4:
-            h ^= (uint_fast64_t)data2[3] << 24;
-            break;
-        case 3:
-            h ^= (uint_fast64_t)data2[2] << 16;
-            break;
-        case 2:
-            h ^= (uint_fast64_t)data2[1] << 8;
-            break;
-        case 1:
-            h ^= (uint_fast64_t)data2[0];
-            h *= m;
-            break;
-    };
-
-    h ^= h >> r;
-    h *= m;
-    h ^= h >> r;
-
-    return (int)(h%largo_tabla_hash);
 }
 
 hash_iter_t *hash_iter_crear(const hash_t *hash) {
@@ -417,13 +326,13 @@ size_t siguiente_primo(size_t numero){
     if(numero%2 == 0 && numero != 2){
         numero+=1;
     }
-    while(!isPrime(numero)){
+    while(!es_primo(numero)){
         numero+=2;
     }
     return numero;
 }
 
-bool isPrime(size_t prime){
+bool es_primo(size_t prime){
     int i;
     if(prime == 2){
         return true;
@@ -438,4 +347,96 @@ bool isPrime(size_t prime){
         }
     }
     return true;
+}
+
+size_t hash_01(const char *str, size_t tamanio) {
+    unsigned long hash = 5381;
+    int c = *str;
+    while (c) {
+        hash = ((hash << 5) + hash) + c;
+        c = *str++;
+    }
+    return hash % tamanio;
+}
+
+size_t hash_02(const char *clave, size_t largo_tabla_hash) {
+    //Jenkins Hashing
+    //Ref: https://en.wikipedia.org/wiki/Jenkins_hash_function
+    size_t i = 0, n = strlen((char*)clave);
+    uint32_t hash = 0;
+    while (i != n) {
+        hash += ((unsigned char*)clave)[i++];
+        hash += hash << 10;
+        hash ^= hash >> 6;
+    }
+    hash += hash << 3;
+    hash ^= hash >> 11;
+    hash += hash << 15;
+    return (size_t)(hash%largo_tabla_hash);
+}
+
+size_t hash_03(const char* clave, size_t largo_tabla_hash) {
+    // murmur hash, ref: http://bitsquid.blogspot.com/2011/08/code-snippet-murmur-hash-inverse-pre.html
+    const uint_fast64_t m = 0xc6a4a7935bd1e995ULL;
+    const int r = 47;
+
+    uint_fast64_t h = FNV_PRIME_64 ^ (largo_tabla_hash * m);
+
+    const uint_fast64_t * data = (const uint_fast64_t *)clave;
+    const uint_fast64_t * end = data + (largo_tabla_hash/8);
+
+    while(data != end)
+    {
+#ifdef PLATFORM_BIG_ENDIAN
+        uint_fast64_t k = *data++;
+			char *p = (char *)&k;
+			char c;
+			c = p[0]; p[0] = p[7]; p[7] = c;
+			c = p[1]; p[1] = p[6]; p[6] = c;
+			c = p[2]; p[2] = p[5]; p[5] = c;
+			c = p[3]; p[3] = p[4]; p[4] = c;
+#else
+        uint_fast64_t k = *data++;
+#endif
+
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+
+        h ^= k;
+        h *= m;
+    }
+
+    const unsigned char * data2 = (const unsigned char*)data;
+
+    switch(largo_tabla_hash & 7) {
+        case 7:
+            h ^= (uint_fast64_t)data2[6] << 48;
+            break;
+        case 6:
+            h ^= (uint_fast64_t)data2[5] << 40;
+            break;
+        case 5:
+            h ^= (uint_fast64_t)data2[4] << 32;
+            break;
+        case 4:
+            h ^= (uint_fast64_t)data2[3] << 24;
+            break;
+        case 3:
+            h ^= (uint_fast64_t)data2[2] << 16;
+            break;
+        case 2:
+            h ^= (uint_fast64_t)data2[1] << 8;
+            break;
+        case 1:
+            h ^= (uint_fast64_t)data2[0];
+            h *= m;
+            break;
+    };
+
+    h ^= h >> r;
+    h *= m;
+    h ^= h >> r;
+
+    return (int)(h%largo_tabla_hash);
 }
