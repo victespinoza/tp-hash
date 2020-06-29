@@ -4,12 +4,12 @@
 #include "lista.h"
 #include <string.h>
 #include <stdint.h>
-#include "math.h"
 #define FNV_PRIME_64 1099511628211U
 #define FNV_OFFSET_64 14695981039346656037U
 
 const size_t TAMANIO = 97;
 #define CAPACIDAD_BUCKETS 4
+const size_t CANTIDAD_FUNCIONES_HASH = 3;
 
 typedef struct {
     char* clave;
@@ -37,14 +37,17 @@ size_t hash_03(const char*, size_t);
 
 funcion_hash_t funciones_hash[3] = {hash_01, hash_02, hash_03};
 
+double sqrt(double number);
 bool es_primo(size_t prime);
 size_t siguiente_primo(size_t numero);
-bool _destruir_bucket(lista_iter_t* iter_bucket, void** datos, void *extra);
-bool _guardar_en_lista(lista_iter_t* iter_bucket, void** datos, void *extra);
+bool _destruir_bucket(lista_iter_t* iter_bucket, void* dato, hash_destruir_dato_t destruir_dato);
+bool _guardar_en_lista(lista_iter_t* iter_bucket, void* dato, hash_destruir_dato_t destruir_dato);
 hash_t* _reasignar_posiciones_hash(hash_t* hash);
 hash_t* _hash_crear(hash_destruir_dato_t destruir_dato, size_t capacidad);
 bool _hash_guardar(hash_t *hash, clave_valor_t* claveValor);
-void _recorrer_buckets(hash_t* hash, bool visitar(lista_iter_t* iter_bucket, void** datos, void *extra),void** datos, void *extra);
+void _recorrer_buckets(hash_t* hash,
+        bool visitar(lista_iter_t* iter_bucket, void* dato, hash_destruir_dato_t destruir_dato),
+        void* datos, hash_destruir_dato_t destruir_dato);
 
 hash_t* hash_crear(hash_destruir_dato_t destruir_dato){
     return _hash_crear(destruir_dato, TAMANIO);
@@ -74,10 +77,7 @@ size_t hash_cantidad(const hash_t *hash){
 }
 
 void hash_destruir(hash_t *hash){
-    void** datos = malloc(sizeof(void*));
-    datos[0] = hash->destruir_dato;
-    _recorrer_buckets(hash, _destruir_bucket, datos, NULL);
-    free(datos);
+    _recorrer_buckets(hash, _destruir_bucket, NULL, hash->destruir_dato);
     free(hash->tabla);
     free(hash);
 }
@@ -86,7 +86,7 @@ bool hash_pertenece(const hash_t *hash, const char *clave) {
     long posicion;
     clave_valor_t* actual;
     bool pertenece = false;
-    for (int i = 0; i < 3 && !pertenece; i++) {
+    for (int i = 0; i < CANTIDAD_FUNCIONES_HASH && !pertenece; i++) {
         posicion = funciones_hash[i](clave, hash->tamanio);
         lista_iter_t *iter = lista_iter_crear(hash->tabla[posicion]);
         while (!lista_iter_al_final(iter)) {
@@ -106,7 +106,7 @@ void *hash_obtener(const hash_t *hash, const char *clave){
     long posicion;
     clave_valor_t* actual;
     void* valor = NULL;
-    for (int i = 0; i < 3 && valor == NULL; i++) {
+    for (int i = 0; i < CANTIDAD_FUNCIONES_HASH && valor == NULL; i++) {
         posicion = funciones_hash[i](clave, hash->tamanio);
         lista_t *bucket = hash->tabla[posicion];
         lista_iter_t *iter = lista_iter_crear(bucket);
@@ -159,7 +159,7 @@ bool _hash_guardar(hash_t *hash, clave_valor_t* clave_valor) {
         for (int i = 0; i < CAPACIDAD_BUCKETS && !lista_iter_al_final(iter); i++) {
             actual = lista_iter_ver_actual(iter);
             if (strcmp(actual->clave, clave) == 0){
-                if(hash->destruir_dato != NULL){
+                if(hash->destruir_dato != NULL && actual->valor != clave_valor->valor){
                     hash->destruir_dato(actual->valor);
                 }
                 free(actual->clave);
@@ -186,7 +186,7 @@ bool _hash_guardar(hash_t *hash, clave_valor_t* clave_valor) {
 void *hash_borrar(hash_t *hash, const char *clave){
     long posicion;
     void* valor = NULL;
-    for (int i = 0; i < 3 && valor == NULL; i++) {
+    for (int i = 0; i < CANTIDAD_FUNCIONES_HASH && valor == NULL; i++) {
         posicion = funciones_hash[i](clave, hash->tamanio);
         lista_t* bucket = hash->tabla[posicion];
         clave_valor_t* actual;
@@ -195,9 +195,6 @@ void *hash_borrar(hash_t *hash, const char *clave){
             actual = lista_iter_ver_actual(iter);
             if(strcmp(clave, actual->clave) == 0){
                 valor = actual->valor;
-                if(hash->destruir_dato != NULL){
-                    hash->destruir_dato(actual->valor);
-                }
                 free(actual->clave);
                 free(lista_iter_borrar(iter));
                 hash->cantidad--;
@@ -213,10 +210,7 @@ void *hash_borrar(hash_t *hash, const char *clave){
 hash_t* _reasignar_posiciones_hash(hash_t* hash){
     hash_t* nuevo_hash = _hash_crear(hash->destruir_dato, siguiente_primo(hash->tamanio*2));
     lista_t* clave_valor_lista = lista_crear();
-    void** datos = malloc(sizeof(void*));
-    datos[0] = clave_valor_lista;
-    _recorrer_buckets(hash,_guardar_en_lista,datos,NULL);
-    free(datos);
+    _recorrer_buckets(hash,_guardar_en_lista,clave_valor_lista,NULL);
     free(hash->tabla);
     while (!lista_esta_vacia(clave_valor_lista)){
         clave_valor_t* clave_valor = lista_borrar_primero(clave_valor_lista);
@@ -230,26 +224,25 @@ hash_t* _reasignar_posiciones_hash(hash_t* hash){
     return hash;
 }
 
-void _recorrer_buckets(hash_t* hash, bool visitar(lista_iter_t* bucket, void** datos, void *extra)
-        , void** datos, void *extra){
+void _recorrer_buckets(hash_t* hash, bool visitar(lista_iter_t* bucket, void* dato, hash_destruir_dato_t destruir_dato)
+        , void* dato, hash_destruir_dato_t destruir_dato){
     for (int i = 0; i < hash->tamanio; i++) {
         lista_iter_t* iter_bucket = lista_iter_crear(hash->tabla[i]);
-        visitar(iter_bucket, datos, extra);
+        visitar(iter_bucket, dato, destruir_dato);
         lista_iter_destruir(iter_bucket);
         lista_destruir(hash->tabla[i], NULL);
     }
 }
 
-bool _guardar_en_lista(lista_iter_t* iter_bucket, void** datos, void *extra){
-    lista_t* clave_valor_lista = datos[0];
+bool _guardar_en_lista(lista_iter_t* iter_bucket, void* dato, hash_destruir_dato_t destruir_dato){
+    lista_t* clave_valor_lista = dato;
     while (!lista_iter_al_final(iter_bucket)){
         lista_insertar_primero(clave_valor_lista, lista_iter_borrar(iter_bucket));
     }
     return true;
 }
 
-bool _destruir_bucket(lista_iter_t* iter_bucket, void** datos, void *extra){
-    hash_destruir_dato_t destruir_dato = datos[0];
+bool _destruir_bucket(lista_iter_t* iter_bucket, void* dato, hash_destruir_dato_t destruir_dato){
     while (!lista_iter_al_final(iter_bucket)){
         clave_valor_t* clave_valor = lista_iter_borrar(iter_bucket);
         if(destruir_dato != NULL){
@@ -347,6 +340,17 @@ bool es_primo(size_t prime){
         }
     }
     return true;
+}
+
+double sqrt(double number){
+    double temp, sqrt;
+    sqrt = number / 2;
+    temp = 0;
+    while(sqrt != temp){
+        temp = sqrt;
+        sqrt = ( number/temp + temp) / 2;
+    }
+    return sqrt;
 }
 
 size_t hash_01(const char *str, size_t tamanio) {
