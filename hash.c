@@ -48,6 +48,8 @@ bool _hash_guardar(hash_t *hash, clave_valor_t* claveValor);
 void _recorrer_buckets(hash_t* hash,
         bool visitar(lista_iter_t* iter_bucket, void* dato, hash_destruir_dato_t destruir_dato),
         void* datos, hash_destruir_dato_t destruir_dato);
+clave_valor_t* buscar(char* clave, hash_t* hash);
+clave_valor_t* crear_clave_valor(char* clave, void* dato);
 
 hash_t* hash_crear(hash_destruir_dato_t destruir_dato){
     return _hash_crear(destruir_dato, TAMANIO);
@@ -83,62 +85,23 @@ void hash_destruir(hash_t *hash){
 }
 
 bool hash_pertenece(const hash_t *hash, const char *clave) {
-    long posicion;
-    clave_valor_t* actual;
-    bool pertenece = false;
-    for (int i = 0; i < CANTIDAD_FUNCIONES_HASH && !pertenece; i++) {
-        posicion = funciones_hash[i](clave, hash->tamanio);
-        lista_iter_t *iter = lista_iter_crear(hash->tabla[posicion]);
-        while (!lista_iter_al_final(iter)) {
-            actual = lista_iter_ver_actual(iter);
-            if (strcmp(clave, actual->clave) == 0) {
-                pertenece = true;
-                break;
-            }
-            lista_iter_avanzar(iter);
-        }
-        lista_iter_destruir(iter);
-    }
-    return pertenece;
+    clave_valor_t* actual = buscar(clave, hash);
+    return actual != NULL;
 }
 
 void *hash_obtener(const hash_t *hash, const char *clave){
-    long posicion;
-    clave_valor_t* actual;
-    void* valor = NULL;
-    for (int i = 0; i < CANTIDAD_FUNCIONES_HASH && valor == NULL; i++) {
-        posicion = funciones_hash[i](clave, hash->tamanio);
-        lista_t *bucket = hash->tabla[posicion];
-        lista_iter_t *iter = lista_iter_crear(bucket);
-        while (!lista_iter_al_final(iter)) {
-            actual = lista_iter_ver_actual(iter);
-            if (strcmp(clave, actual->clave) == 0) {
-                valor = actual->valor;
-                break;
-            }
-            lista_iter_avanzar(iter);
-        }
-        lista_iter_destruir(iter);
+    clave_valor_t* actual = buscar(clave, hash);
+    if (actual == NULL){
+        return NULL;
     }
-    return valor;
+    return actual->valor;
 }
 
 bool hash_guardar(hash_t *hash, const char *clave, void *dato){
     if(hash->cantidad == hash->tamanio){
         hash = _reasignar_posiciones_hash(hash);
     }
-    clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
-    if(clave_valor == NULL){
-        return false;
-    }
-    clave_valor->cantidad_hash_aplicado = 0;
-    clave_valor->clave = malloc(sizeof(char)*(strlen(clave)+1));
-    if(clave_valor->clave == NULL){
-        free(clave_valor);
-        return false;
-    }
-    strcpy(clave_valor->clave, clave );
-    clave_valor->valor = dato;
+    clave_valor_t* clave_valor = crear_clave_valor(clave, dato);
     return _hash_guardar(hash, clave_valor);
 }
 
@@ -313,6 +276,42 @@ bool hash_iter_al_final(const hash_iter_t *iter) {
 void hash_iter_destruir(hash_iter_t* iter) {
     lista_iter_destruir(iter->iter_posicion_actual);
     free(iter);
+}
+
+clave_valor_t* buscar(char* clave, hash_t* hash){
+    long posicion;
+    clave_valor_t* buscado = NULL;
+    clave_valor_t* actual;
+    for (int i = 0; i < CANTIDAD_FUNCIONES_HASH; i++) {
+        posicion = funciones_hash[i](clave, hash->tamanio);
+        lista_t *bucket = hash->tabla[posicion];
+        lista_iter_t *iter = lista_iter_crear(bucket);
+        while (!lista_iter_al_final(iter)) {
+            actual = lista_iter_ver_actual(iter);
+            if (strcmp(clave, actual->clave) == 0) {
+                buscado = actual;
+                break;
+            }
+            lista_iter_avanzar(iter);
+        }
+        lista_iter_destruir(iter);
+    }
+    return buscado;
+}
+
+clave_valor_t* crear_clave_valor(char* clave, void* dato){
+    clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
+    if(clave_valor == NULL){
+        return NULL;
+    }
+    clave_valor->cantidad_hash_aplicado = 0;
+    clave_valor->clave = malloc(sizeof(char)*(strlen(clave)+1));
+    if(clave_valor->clave == NULL){
+        free(clave_valor);
+        return NULL;
+    }
+    strcpy(clave_valor->clave, clave );
+    clave_valor->valor = dato;
 }
 
 size_t siguiente_primo(size_t numero){
