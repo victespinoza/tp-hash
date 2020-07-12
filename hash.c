@@ -48,8 +48,8 @@ bool _hash_guardar(hash_t *hash, clave_valor_t* claveValor);
 void _recorrer_buckets(hash_t* hash,
         bool visitar(lista_iter_t* iter_bucket, void* dato, hash_destruir_dato_t destruir_dato),
         void* datos, hash_destruir_dato_t destruir_dato);
-clave_valor_t* buscar(char* clave, hash_t* hash);
-clave_valor_t* crear_clave_valor(char* clave, void* dato);
+clave_valor_t* buscar(const char* clave, const hash_t* hash);
+clave_valor_t* crear_clave_valor(const char* clave, void* dato);
 
 hash_t* hash_crear(hash_destruir_dato_t destruir_dato){
     return _hash_crear(destruir_dato, TAMANIO);
@@ -278,9 +278,8 @@ void hash_iter_destruir(hash_iter_t* iter) {
     free(iter);
 }
 
-clave_valor_t* buscar(char* clave, hash_t* hash){
+clave_valor_t* buscar(const char* clave, const hash_t* hash){
     long posicion;
-    clave_valor_t* buscado = NULL;
     clave_valor_t* actual;
     for (int i = 0; i < CANTIDAD_FUNCIONES_HASH; i++) {
         posicion = funciones_hash[i](clave, hash->tamanio);
@@ -289,17 +288,17 @@ clave_valor_t* buscar(char* clave, hash_t* hash){
         while (!lista_iter_al_final(iter)) {
             actual = lista_iter_ver_actual(iter);
             if (strcmp(clave, actual->clave) == 0) {
-                buscado = actual;
-                break;
+                lista_iter_destruir(iter);
+                return actual;
             }
             lista_iter_avanzar(iter);
         }
         lista_iter_destruir(iter);
     }
-    return buscado;
+    return NULL;
 }
 
-clave_valor_t* crear_clave_valor(char* clave, void* dato){
+clave_valor_t* crear_clave_valor(const char* clave, void* dato){
     clave_valor_t* clave_valor = malloc(sizeof(clave_valor_t));
     if(clave_valor == NULL){
         return NULL;
@@ -312,6 +311,7 @@ clave_valor_t* crear_clave_valor(char* clave, void* dato){
     }
     strcpy(clave_valor->clave, clave );
     clave_valor->valor = dato;
+    return clave_valor;
 }
 
 size_t siguiente_primo(size_t numero){
